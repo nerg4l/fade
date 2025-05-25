@@ -1,3 +1,4 @@
+// +heroku goVersion go1.24
 module fade
 
 go 1.24
