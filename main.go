@@ -17,7 +17,9 @@ import (
 	"time"
 )
 
-type model struct{}
+type model struct {
+	anim int
+}
 
 func (m model) Init() tea.Cmd {
 	return tea.HideCursor
@@ -29,13 +31,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
+		case "down":
+			m.anim++
+			m.anim %= 4
+			return m, nil
 		}
 	}
 	return m, nil
 }
 
 func (m model) View() string {
-	return `
+	switch m.anim {
+	case 0, 2:
+		return `
    ▄▀▀▀▀▀▀▄
   █        █
  ██▀▄▄▄▄▄▄▀██
@@ -45,6 +53,30 @@ func (m model) View() string {
  ▀█▀▄▄▀▀▄▄▀█▀
   ▀▄▄▄▀▀▄▄▄▀
 `
+	case 1:
+		return `
+   ▄▀▀▀▀▀▀▄
+  █        █
+ ██▀▄▄▄▄▄▄▀██
+█ ▀  ▄  ▄  ▀ █
+ ██▄ ▀  ▀ ▄██
+█  ████████  █
+ ▀█▀▄▄█▀▄▄▀▀▀
+  ▀▄▄▄▀
+`
+	case 3:
+		return `
+   ▄▀▀▀▀▀▀▄
+  █        █
+ ██▀▄▄▄▄▄▄▀██
+█ ▀  ▄  ▄  ▀ █
+ ██▄ ▀  ▀ ▄██
+█  ████████  █
+ ▀▀▀▄▄▀█▄▄▀█▀
+       ▀▄▄▄▀
+`
+	}
+	return ""
 }
 
 func main() {
