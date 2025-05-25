@@ -17,6 +17,7 @@ import (
 	"image/color"
 	"image/png"
 	"log"
+	"math"
 	"os"
 	"os/signal"
 	"strings"
@@ -69,14 +70,46 @@ func imageAsString(dec image.Image) string {
 	rec := dec.Bounds()
 	for y := 0; y < rec.Dy(); y += 2 {
 		for x := 0; x < rec.Dx(); x++ {
-			b.WriteString(lipgloss.NewStyle().
-				Foreground(colorize(dec.At(x, y))).
-				Background(colorize(dec.At(x, y+1))).
-				Render("▀"))
+			top := colorize(dec.At(x, y))
+			bottom := colorize(dec.At(x, y+1))
+			if Luminance(top) > Luminance(bottom) {
+				b.WriteString(lipgloss.NewStyle().
+					Foreground(top).
+					Background(bottom).
+					Render("▀"))
+			} else if Luminance(top) < Luminance(bottom) {
+				b.WriteString(lipgloss.NewStyle().
+					Foreground(bottom).
+					Background(top).
+					Render("▄"))
+			} else if Luminance(top) < Luminance(color.RGBA{R: 128, G: 128, B: 128, A: 255}) {
+				b.WriteString(lipgloss.NewStyle().
+					Foreground(top).
+					Background(lipgloss.Color("#ffffff")).
+					Render("█"))
+			} else {
+				b.WriteString(lipgloss.NewStyle().
+					Background(bottom).
+					Render(" "))
+			}
 		}
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+func Luminance(c color.Color) float64 {
+	r, g, b, _ := c.RGBA()
+	return 0.2126*toSRGB(uint8(r)) + 0.7152*toSRGB(uint8(g)) + 0.0722*toSRGB(uint8(b))
+}
+
+func toSRGB(i uint8) float64 {
+	v := float64(i) / 255
+	if v <= 0.04045 {
+		return v / 12.92
+	} else {
+		return math.Pow((v+0.055)/1.055, 2.4)
+	}
 }
 
 func (m model) Init() tea.Cmd {
