@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	TileMaxPoint = image.Point{X: 14, Y: 16}
+	TileMaxPoint = image.Point{X: 16, Y: 16}
 )
 
 //go:embed sprite/*
