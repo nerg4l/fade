@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"embed"
+	"encoding/base64"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -32,9 +34,12 @@ func openImage(name string) (image.Image, error) {
 }
 
 type spriteTrainer struct {
+	id      string
 	sprites map[string][]image.Image
 	face    string
 	anim    int
+
+	lock bool
 
 	background image.Image
 
@@ -42,7 +47,7 @@ type spriteTrainer struct {
 }
 
 func newTrainer() (*spriteTrainer, error) {
-	m := spriteTrainer{face: "down"}
+	m := spriteTrainer{id: generateId(), face: "down"}
 	m.r = lipgloss.DefaultRenderer()
 	m.sprites = map[string][]image.Image{
 		"down":  make([]image.Image, 4),
@@ -93,6 +98,16 @@ func newTrainer() (*spriteTrainer, error) {
 	return &m, nil
 }
 
+func generateId() string {
+	b := make([]byte, 8)
+	_, err := rand.Read(b[:])
+	if err != nil {
+		panic(err)
+	}
+	id := base64.RawStdEncoding.EncodeToString(b)
+	return id
+}
+
 var (
 	PalletWhite     = "#f8f8f8"
 	PalletBlack     = "#141414"
@@ -100,7 +115,7 @@ var (
 )
 
 func (m spriteTrainer) Init() tea.Cmd {
-	return tea.HideCursor
+	return nil
 }
 
 func (m spriteTrainer) WithBackground(i image.Image) spriteTrainer {
@@ -109,11 +124,13 @@ func (m spriteTrainer) WithBackground(i image.Image) spriteTrainer {
 }
 
 func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.lock {
+			break
+		}
 		switch k := msg.String(); k {
-		case "ctrl+c":
-			return m, tea.Quit
 		case "down", "up", "left", "right":
 			if m.face == k {
 				m.anim++
@@ -121,10 +138,20 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 				m.face = k
 				m.anim = 1
 			}
+			cmds = append(cmds, doTick(m.id))
+			m.lock = true
+		}
+	case tickMsg:
+		if m.id != msg.ID {
+			break
+		}
+		if m.anim%2 == 1 {
+			m.anim++
+			m.lock = false
 		}
 	}
 	m.anim %= len(m.sprites[m.face])
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 func (m spriteTrainer) View() string {

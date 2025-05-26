@@ -44,18 +44,40 @@ func newGame() (*Game, error) {
 	}, nil
 }
 
+type tickMsg struct {
+	ID string
+	T  time.Time
+}
+
+func doTick(id string) tea.Cmd {
+	return tea.Tick(200*time.Millisecond, func(t time.Time) tea.Msg {
+		return tickMsg{ID: id, T: t}
+	})
+}
+
 func (g *Game) Init() tea.Cmd {
-	var cmd tea.Cmd
-	var cmds []tea.Cmd
-	g.trainer.r = g.r
-	cmd = g.trainer.Init()
-	cmds = append(cmds, cmd)
-	return tea.Batch(cmds...)
+	return tea.Batch(
+		tea.HideCursor,
+		doTick("root"),
+		g.trainer.Init(),
+	)
 }
 
 func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch k := msg.String(); k {
+		case "ctrl+c":
+			return g, tea.Quit
+		}
+	case tickMsg:
+		if msg.ID != "root" {
+			break
+		}
+		cmds = append(cmds, doTick("root"))
+	}
 	g.trainer, cmd = g.trainer.WithBackground(g.tile).Update(msg)
 	cmds = append(cmds, cmd)
 
