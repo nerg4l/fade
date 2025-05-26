@@ -56,7 +56,7 @@ func (g *Game) Init() tea.Cmd {
 func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
-	g.trainer, cmd = g.trainer.Update(msg)
+	g.trainer, cmd = g.trainer.WithBackground(g.tile).Update(msg)
 	cmds = append(cmds, cmd)
 
 	return g, tea.Batch(cmds...)
@@ -85,6 +85,7 @@ func main() {
 	}
 
 	if *addr == "-" {
+		m.r = lipgloss.NewRenderer(os.Stdout)
 		p := tea.NewProgram(m, options...)
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)

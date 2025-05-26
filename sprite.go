@@ -12,13 +12,31 @@ import (
 	"strings"
 )
 
+var (
+	TileMaxPoint = image.Point{X: 14, Y: 16}
+)
+
 //go:embed sprite/*
 var content embed.FS
+
+func openImage(name string) (image.Image, error) {
+	f, err := content.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	i, err := png.Decode(f)
+	if err != nil {
+		return nil, err
+	}
+	return i, nil
+}
 
 type spriteTrainer struct {
 	sprites map[string][]image.Image
 	face    string
 	anim    int
+
+	background image.Image
 
 	r *lipgloss.Renderer
 }
@@ -75,45 +93,19 @@ func newTrainer() (*spriteTrainer, error) {
 	return &m, nil
 }
 
-func openImage(name string) (image.Image, error) {
-	f, err := content.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	i, err := png.Decode(f)
-	if err != nil {
-		return nil, err
-	}
-	return i, nil
-}
-
 var (
 	PalletWhite     = "#f8f8f8"
 	PalletBlack     = "#141414"
 	PalletHighlight = "#a8a8a8"
 )
 
-func imageAsString(r *lipgloss.Renderer, dec image.Image) string {
-	var b strings.Builder
-	rec := dec.Bounds()
-	for y := 0; y < rec.Dy(); y += 2 {
-		if y != 0 {
-			b.WriteString("\n")
-		}
-		for x := 0; x < rec.Dx(); x++ {
-			top := dec.At(x, y)
-			bottom := dec.At(x, y+1)
-			b.WriteString(r.NewStyle().
-				Foreground(colorize(top)).
-				Background(colorize(bottom)).
-				Render("▀"))
-		}
-	}
-	return b.String()
-}
-
 func (m spriteTrainer) Init() tea.Cmd {
 	return tea.HideCursor
+}
+
+func (m spriteTrainer) WithBackground(i image.Image) spriteTrainer {
+	m.background = i
+	return m
 }
 
 func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
@@ -141,7 +133,36 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 }
 
 func (m spriteTrainer) View() string {
-	return imageAsString(m.r, m.sprites[m.face][m.anim])
+	if m.r == nil {
+		return ""
+	}
+	return imageAsString(m.r, m.sprites[m.face][m.anim], m.background)
+}
+
+func imageAsString(r *lipgloss.Renderer, layers ...image.Image) string {
+	var b strings.Builder
+	var img image.Image = image.NewRGBA(image.Rect(0, 0, TileMaxPoint.X, TileMaxPoint.Y))
+	rec := img.Bounds()
+	for i := 0; i < len(layers); i++ {
+		if layers[i] == nil {
+			continue
+		}
+		img = imaging.Overlay(layers[i], img, image.Point{}, 1)
+	}
+	for y := 0; y < rec.Dy(); y += 2 {
+		if y != 0 {
+			b.WriteString("\n")
+		}
+		for x := 0; x < rec.Dx(); x++ {
+			top := img.At(x, y)
+			bottom := img.At(x, y+1)
+			b.WriteString(r.NewStyle().
+				Foreground(colorize(top)).
+				Background(colorize(bottom)).
+				Render("▀"))
+		}
+	}
+	return b.String()
 }
 
 func colorize(color color.Color) lipgloss.TerminalColor {
