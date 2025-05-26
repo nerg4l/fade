@@ -111,21 +111,16 @@ func (m spriteTrainer) WithBackground(i image.Image) spriteTrainer {
 func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch k := msg.String(); k {
 		case "ctrl+c":
 			return m, tea.Quit
-		case "down":
-			m.face = "down"
-			m.anim++
-		case "up":
-			m.face = "up"
-			m.anim++
-		case "left":
-			m.face = "left"
-			m.anim++
-		case "right":
-			m.face = "right"
-			m.anim++
+		case "down", "up", "left", "right":
+			if m.face == k {
+				m.anim++
+			} else {
+				m.face = k
+				m.anim = 1
+			}
 		}
 	}
 	m.anim %= len(m.sprites[m.face])
