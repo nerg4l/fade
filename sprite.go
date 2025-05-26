@@ -23,7 +23,7 @@ type spriteTrainer struct {
 	r *lipgloss.Renderer
 }
 
-func newModel() (*spriteTrainer, error) {
+func newTrainer() (*spriteTrainer, error) {
 	m := spriteTrainer{face: "down"}
 	m.r = lipgloss.DefaultRenderer()
 	m.sprites = map[string][]image.Image{
@@ -97,6 +97,9 @@ func imageAsString(r *lipgloss.Renderer, dec image.Image) string {
 	var b strings.Builder
 	rec := dec.Bounds()
 	for y := 0; y < rec.Dy(); y += 2 {
+		if y != 0 {
+			b.WriteString("\n")
+		}
 		for x := 0; x < rec.Dx(); x++ {
 			top := dec.At(x, y)
 			bottom := dec.At(x, y+1)
@@ -105,7 +108,6 @@ func imageAsString(r *lipgloss.Renderer, dec image.Image) string {
 				Background(colorize(bottom)).
 				Render("▀"))
 		}
-		b.WriteString("\n")
 	}
 	return b.String()
 }
@@ -114,7 +116,7 @@ func (m spriteTrainer) Init() tea.Cmd {
 	return tea.HideCursor
 }
 
-func (m spriteTrainer) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {

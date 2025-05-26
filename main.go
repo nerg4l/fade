@@ -5,18 +5,71 @@ import (
 	"errors"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
 	"github.com/muesli/termenv"
 	flag "github.com/spf13/pflag"
+	"image"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
+
+type Game struct {
+	trainer spriteTrainer
+	tile    image.Image
+
+	r *lipgloss.Renderer
+}
+
+func newGame() (*Game, error) {
+	trainer, err := newTrainer()
+	if err != nil {
+		return nil, err
+	}
+
+	tile, err := openImage("sprite/tile.png")
+	if err != nil {
+		return nil, err
+	}
+
+	return &Game{
+		trainer: *trainer,
+		tile:    tile,
+	}, nil
+}
+
+func (g *Game) Init() tea.Cmd {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+	g.trainer.r = g.r
+	cmd = g.trainer.Init()
+	cmds = append(cmds, cmd)
+	return tea.Batch(cmds...)
+}
+
+func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+	g.trainer, cmd = g.trainer.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return g, tea.Batch(cmds...)
+}
+
+func (g *Game) View() string {
+	tile := imageAsString(g.r, g.tile)
+	return lipgloss.JoinVertical(lipgloss.Left,
+		lipgloss.JoinHorizontal(lipgloss.Top, tile, tile, tile),
+		lipgloss.JoinHorizontal(lipgloss.Top, tile, g.trainer.View(), tile),
+		lipgloss.JoinHorizontal(lipgloss.Top, tile, tile, tile),
+	)
+}
 
 func main() {
 	addr := flag.StringP("addr", "a", "0.0.0.0:5000", "SSH server port")
@@ -26,7 +79,7 @@ func main() {
 		tea.WithAltScreen(),
 	}
 
-	m, err := newModel()
+	m, err := newGame()
 	if err != nil {
 		log.Fatal(err)
 	}
