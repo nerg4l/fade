@@ -27,21 +27,22 @@ type Game struct {
 	r *lipgloss.Renderer
 }
 
-func newGame() (*Game, error) {
-	trainer, err := newTrainer()
-	if err != nil {
-		return nil, err
-	}
+type gameOptions struct {
+	Trainer trainerOptions
+	Brick   image.Image
+}
 
-	tile, err := openImage("sprite/tile.png")
+func newGame(r *lipgloss.Renderer, o gameOptions) *Game {
+	trainer, err := newTrainer(r, o.Trainer)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	return &Game{
 		trainer: *trainer,
-		tile:    tile,
-	}, nil
+		tile:    o.Brick,
+		r:       r,
+	}
 }
 
 type tickMsg struct {
@@ -101,13 +102,13 @@ func main() {
 		tea.WithAltScreen(),
 	}
 
-	m, err := newGame()
+	o, err := loadOptions()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if *addr == "-" {
-		m.r = lipgloss.NewRenderer(os.Stdout)
+		m := newGame(lipgloss.NewRenderer(os.Stdout), o)
 		p := tea.NewProgram(m, options...)
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
@@ -125,7 +126,7 @@ func main() {
 		ssh.PasswordAuth(func(ssh.Context, string) bool { return false }),
 		wish.WithMiddleware(
 			bubbletea.MiddlewareWithColorProfile(func(sess ssh.Session) (tea.Model, []tea.ProgramOption) {
-				m.r = bubbletea.MakeRenderer(sess)
+				m := newGame(bubbletea.MakeRenderer(sess), o)
 				return m, append(options, tea.WithContext(sess.Context()))
 			}, termenv.ANSI),
 			logging.Middleware(),
@@ -150,4 +151,38 @@ func main() {
 	if err := s.Shutdown(ctx); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
 		fmt.Fprintln(os.Stderr, "Error stopping SSH server:", err)
 	}
+}
+
+func loadOptions() (gameOptions, error) {
+	var o gameOptions
+	var err error
+	o.Brick, err = openImage("sprite/tile.png")
+	if err != nil {
+		return o, err
+	}
+	o.Trainer.FrontIdle, err = openImage("sprite/front_idle.png")
+	if err != nil {
+		return o, err
+	}
+	o.Trainer.FrontWalk, err = openImage("sprite/front_walk.png")
+	if err != nil {
+		return o, err
+	}
+	o.Trainer.BackIdle, err = openImage("sprite/back_idle.png")
+	if err != nil {
+		return o, err
+	}
+	o.Trainer.BackWalk, err = openImage("sprite/back_walk.png")
+	if err != nil {
+		return o, err
+	}
+	o.Trainer.SideIdle, err = openImage("sprite/side_idle.png")
+	if err != nil {
+		return o, err
+	}
+	o.Trainer.SideWalk, err = openImage("sprite/side_walk.png")
+	if err != nil {
+		return o, err
+	}
+	return o, nil
 }

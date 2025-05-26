@@ -46,9 +46,17 @@ type spriteTrainer struct {
 	r *lipgloss.Renderer
 }
 
-func newTrainer() (*spriteTrainer, error) {
-	m := spriteTrainer{id: generateId(), face: "down"}
-	m.r = lipgloss.DefaultRenderer()
+type trainerOptions struct {
+	FrontIdle image.Image
+	FrontWalk image.Image
+	BackIdle  image.Image
+	BackWalk  image.Image
+	SideIdle  image.Image
+	SideWalk  image.Image
+}
+
+func newTrainer(r *lipgloss.Renderer, o trainerOptions) (*spriteTrainer, error) {
+	m := spriteTrainer{id: generateId(), face: "down", r: r}
 	m.sprites = map[string][]image.Image{
 		"down":  make([]image.Image, 4),
 		"up":    make([]image.Image, 4),
@@ -56,44 +64,20 @@ func newTrainer() (*spriteTrainer, error) {
 		"right": make([]image.Image, 2),
 	}
 
-	idle, err := openImage("sprite/front_idle.png")
-	if err != nil {
-		return nil, err
-	}
-	walk, err := openImage("sprite/front_walk.png")
-	if err != nil {
-		return nil, err
-	}
-	m.sprites["down"][0] = idle
-	m.sprites["down"][1] = walk
+	m.sprites["down"][0] = o.FrontIdle
+	m.sprites["down"][1] = o.FrontWalk
 	m.sprites["down"][2] = m.sprites["down"][0]
-	m.sprites["down"][3] = imaging.FlipH(walk)
+	m.sprites["down"][3] = imaging.FlipH(o.FrontWalk)
 
-	idle, err = openImage("sprite/back_idle.png")
-	if err != nil {
-		return nil, err
-	}
-	walk, err = openImage("sprite/back_walk.png")
-	if err != nil {
-		return nil, err
-	}
-	m.sprites["up"][0] = idle
-	m.sprites["up"][1] = walk
+	m.sprites["up"][0] = o.BackIdle
+	m.sprites["up"][1] = o.BackWalk
 	m.sprites["up"][2] = m.sprites["up"][0]
-	m.sprites["up"][3] = imaging.FlipH(walk)
+	m.sprites["up"][3] = imaging.FlipH(o.BackWalk)
 
-	idle, err = openImage("sprite/side_idle.png")
-	if err != nil {
-		return nil, err
-	}
-	walk, err = openImage("sprite/side_walk.png")
-	if err != nil {
-		return nil, err
-	}
-	m.sprites["left"][0] = idle
-	m.sprites["left"][1] = walk
-	m.sprites["right"][0] = imaging.FlipH(idle)
-	m.sprites["right"][1] = imaging.FlipH(walk)
+	m.sprites["left"][0] = o.SideIdle
+	m.sprites["left"][1] = o.SideWalk
+	m.sprites["right"][0] = imaging.FlipH(o.SideIdle)
+	m.sprites["right"][1] = imaging.FlipH(o.SideWalk)
 
 	return &m, nil
 }
@@ -155,9 +139,6 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 }
 
 func (m spriteTrainer) View() string {
-	if m.r == nil {
-		return ""
-	}
 	return imageAsString(m.r, m.sprites[m.face][m.anim], m.background)
 }
 
