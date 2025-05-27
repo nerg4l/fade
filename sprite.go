@@ -158,13 +158,13 @@ func imageAsString(r *lipgloss.Renderer, img image.Image) string {
 	return b.String()
 }
 
-func colorize(color color.Color) lipgloss.TerminalColor {
-	r, g, b, a := color.RGBA()
+func colorize(c color.Color) lipgloss.TerminalColor {
+	r, g, b, a := c.RGBA()
 	if a == 0 {
 		return lipgloss.CompleteColor{TrueColor: PalletWhite, ANSI256: "250", ANSI: "7"}
 	}
-	c := fmt.Sprintf("#%02x%02x%02x", uint8(r), uint8(g), uint8(b))
-	switch c {
+	hex := fmt.Sprintf("#%02x%02x%02x", uint8(r), uint8(g), uint8(b))
+	switch hex {
 	case PalletWhite:
 		return lipgloss.CompleteColor{TrueColor: PalletWhite, ANSI256: "250", ANSI: "7"}
 	case PalletBlack:
