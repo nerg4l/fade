@@ -31,6 +31,7 @@ func openSpriteSheet(name string) (SpriteSheet, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 	i, err := png.Decode(f)
 	if err != nil {
 		return nil, err
