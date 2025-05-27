@@ -21,7 +21,12 @@ var (
 //go:embed sprite/*
 var content embed.FS
 
-func openImage(name string) (image.Image, error) {
+type SpriteSheet interface {
+	image.Image
+	SubImage(image.Rectangle) image.Image
+}
+
+func openSpriteSheet(name string) (SpriteSheet, error) {
 	f, err := content.Open(name)
 	if err != nil {
 		return nil, err
@@ -30,7 +35,7 @@ func openImage(name string) (image.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	return i, nil
+	return i.(SpriteSheet), nil
 }
 
 type spriteTrainer struct {
@@ -138,8 +143,8 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m spriteTrainer) View() string {
-	return imageAsString(m.r, m.sprites[m.face][m.anim], m.background)
+func (m spriteTrainer) View() image.Image {
+	return m.sprites[m.face][m.anim]
 }
 
 func imageAsString(r *lipgloss.Renderer, layers ...image.Image) string {

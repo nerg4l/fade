@@ -87,9 +87,10 @@ func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (g *Game) View() string {
 	tile := imageAsString(g.r, g.tile)
+	trainer := imageAsString(g.r, g.trainer.View(), g.tile)
 	return lipgloss.JoinVertical(lipgloss.Left,
 		lipgloss.JoinHorizontal(lipgloss.Top, tile, tile, tile),
-		lipgloss.JoinHorizontal(lipgloss.Top, tile, g.trainer.View(), tile),
+		lipgloss.JoinHorizontal(lipgloss.Top, tile, trainer, tile),
 		lipgloss.JoinHorizontal(lipgloss.Top, tile, tile, tile),
 	)
 }
@@ -153,36 +154,41 @@ func main() {
 	}
 }
 
+// A Point is an X, Y coordinate pair. The axes increase right and down.
+type Point struct {
+	X, Y int
+}
+
 func loadOptions() (gameOptions, error) {
 	var o gameOptions
 	var err error
-	o.Brick, err = openImage("sprite/tile.png")
+	o.Brick, err = openSpriteSheet("sprite/tile.png")
 	if err != nil {
 		return o, err
 	}
-	o.Trainer.FrontIdle, err = openImage("sprite/front_idle.png")
+	sheetT, err := openSpriteSheet("sprite/trainer.png")
 	if err != nil {
 		return o, err
 	}
-	o.Trainer.FrontWalk, err = openImage("sprite/front_walk.png")
-	if err != nil {
-		return o, err
-	}
-	o.Trainer.BackIdle, err = openImage("sprite/back_idle.png")
-	if err != nil {
-		return o, err
-	}
-	o.Trainer.BackWalk, err = openImage("sprite/back_walk.png")
-	if err != nil {
-		return o, err
-	}
-	o.Trainer.SideIdle, err = openImage("sprite/side_idle.png")
-	if err != nil {
-		return o, err
-	}
-	o.Trainer.SideWalk, err = openImage("sprite/side_walk.png")
-	if err != nil {
-		return o, err
+	for y := 0; y < (sheetT.Bounds().Dy() / 16); y++ {
+		for x := 0; x < (sheetT.Bounds().Dx() / 16); x++ {
+			img := sheetT.SubImage(image.Rect(x*16, y*16, (x+1)*16, (y+1)*16))
+			v := Point{X: x, Y: y}
+			switch v {
+			case Point{X: 0, Y: 0}:
+				o.Trainer.FrontIdle = img
+			case Point{X: 1, Y: 0}:
+				o.Trainer.FrontWalk = img
+			case Point{X: 0, Y: 1}:
+				o.Trainer.SideIdle = img
+			case Point{X: 1, Y: 1}:
+				o.Trainer.SideWalk = img
+			case Point{X: 0, Y: 2}:
+				o.Trainer.BackIdle = img
+			case Point{X: 1, Y: 2}:
+				o.Trainer.BackWalk = img
+			}
+		}
 	}
 	return o, nil
 }
