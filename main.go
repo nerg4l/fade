@@ -13,6 +13,7 @@ import (
 	"github.com/muesli/termenv"
 	flag "github.com/spf13/pflag"
 	"image"
+	"image/draw"
 	"log"
 	"os"
 	"os/signal"
@@ -22,13 +23,15 @@ import (
 
 type Game struct {
 	trainer spriteTrainer
-	tile    image.Image
+	options gameOptions
 
 	r *lipgloss.Renderer
 }
 
 type gameOptions struct {
 	Trainer trainerOptions
+	Blank   image.Image
+	Grass   image.Image
 	Brick   image.Image
 }
 
@@ -40,7 +43,7 @@ func newGame(r *lipgloss.Renderer, o gameOptions) *Game {
 
 	return &Game{
 		trainer: *trainer,
-		tile:    o.Brick,
+		options: o,
 		r:       r,
 	}
 }
@@ -79,20 +82,28 @@ func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmds = append(cmds, doTick("root"))
 	}
-	g.trainer, cmd = g.trainer.WithBackground(g.tile).Update(msg)
+	g.trainer, cmd = g.trainer.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return g, tea.Batch(cmds...)
 }
 
 func (g *Game) View() string {
-	tile := imageAsString(g.r, g.tile)
-	trainer := imageAsString(g.r, g.trainer.View(), g.tile)
-	return lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Top, tile, tile, tile),
-		lipgloss.JoinHorizontal(lipgloss.Top, tile, trainer, tile),
-		lipgloss.JoinHorizontal(lipgloss.Top, tile, tile, tile),
-	)
+	visibleArea := image.NewRGBA(image.Rect(0, 0, 3*16, 3*16))
+	sr := g.options.Brick.Bounds()
+	for y := 0; y < visibleArea.Rect.Dy(); y += 8 {
+		for x := 0; x < visibleArea.Rect.Dx(); x += 8 {
+			dp := image.Point{x, y}
+			r := image.Rectangle{dp, dp.Add(sr.Size())}
+			draw.Draw(visibleArea, r, g.options.Brick, sr.Min, draw.Src)
+		}
+	}
+	src := g.trainer.View()
+	sr = src.Bounds()
+	dp := image.Point{16, 16}
+	r := image.Rectangle{dp, dp.Add(sr.Size())}
+	draw.Draw(visibleArea, r, src, sr.Min, draw.Over)
+	return imageAsString(g.r, visibleArea)
 }
 
 func main() {
@@ -162,30 +173,44 @@ type Point struct {
 func loadOptions() (gameOptions, error) {
 	var o gameOptions
 	var err error
-	o.Brick, err = openSpriteSheet("sprite/tile.png")
+	tile, err := openSpriteSheet("sprite/tile.png")
 	if err != nil {
 		return o, err
 	}
-	sheetT, err := openSpriteSheet("sprite/trainer.png")
-	if err != nil {
-		return o, err
-	}
-	for y := 0; y < (sheetT.Bounds().Dy() / 16); y++ {
-		for x := 0; x < (sheetT.Bounds().Dx() / 16); x++ {
-			img := sheetT.SubImage(image.Rect(x*16, y*16, (x+1)*16, (y+1)*16))
+	for y := 0; y < (tile.Bounds().Dy() / 8); y++ {
+		for x := 0; x < (tile.Bounds().Dx() / 8); x++ {
+			img := tile.SubImage(image.Rect(x*8, y*8, (x+1)*8, (y+1)*8))
 			v := Point{X: x, Y: y}
 			switch v {
-			case Point{X: 0, Y: 0}:
+			case Point{Y: 0, X: 0}:
+				o.Blank = img
+			case Point{Y: 0, X: 1}:
+				o.Grass = img
+			case Point{Y: 1, X: 0}:
+				o.Brick = img
+			}
+		}
+	}
+	trainer, err := openSpriteSheet("sprite/trainer.png")
+	if err != nil {
+		return o, err
+	}
+	for y := 0; y < (trainer.Bounds().Dy() / 16); y++ {
+		for x := 0; x < (trainer.Bounds().Dx() / 16); x++ {
+			img := trainer.SubImage(image.Rect(x*16, y*16, (x+1)*16, (y+1)*16))
+			v := Point{X: x, Y: y}
+			switch v {
+			case Point{Y: 0, X: 0}:
 				o.Trainer.FrontIdle = img
-			case Point{X: 1, Y: 0}:
+			case Point{Y: 0, X: 1}:
 				o.Trainer.FrontWalk = img
-			case Point{X: 0, Y: 1}:
+			case Point{Y: 1, X: 0}:
 				o.Trainer.SideIdle = img
-			case Point{X: 1, Y: 1}:
+			case Point{Y: 1, X: 1}:
 				o.Trainer.SideWalk = img
-			case Point{X: 0, Y: 2}:
+			case Point{Y: 2, X: 0}:
 				o.Trainer.BackIdle = img
-			case Point{X: 1, Y: 2}:
+			case Point{Y: 2, X: 1}:
 				o.Trainer.BackWalk = img
 			}
 		}

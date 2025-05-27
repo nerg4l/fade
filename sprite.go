@@ -5,9 +5,9 @@ import (
 	"embed"
 	"encoding/base64"
 	"fmt"
+	"github.com/anthonynsimon/bild/transform"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/disintegration/imaging"
 	"image"
 	"image/color"
 	"image/png"
@@ -46,10 +46,6 @@ type spriteTrainer struct {
 	anim    int
 
 	lock bool
-
-	background image.Image
-
-	r *lipgloss.Renderer
 }
 
 type trainerOptions struct {
@@ -62,7 +58,7 @@ type trainerOptions struct {
 }
 
 func newTrainer(r *lipgloss.Renderer, o trainerOptions) (*spriteTrainer, error) {
-	m := spriteTrainer{id: generateId(), face: "down", r: r}
+	m := spriteTrainer{id: generateId(), face: "down"}
 	m.sprites = map[string][]image.Image{
 		"down":  make([]image.Image, 4),
 		"up":    make([]image.Image, 4),
@@ -73,17 +69,17 @@ func newTrainer(r *lipgloss.Renderer, o trainerOptions) (*spriteTrainer, error) 
 	m.sprites["down"][0] = o.FrontIdle
 	m.sprites["down"][1] = o.FrontWalk
 	m.sprites["down"][2] = m.sprites["down"][0]
-	m.sprites["down"][3] = imaging.FlipH(o.FrontWalk)
+	m.sprites["down"][3] = transform.FlipH(o.FrontWalk)
 
 	m.sprites["up"][0] = o.BackIdle
 	m.sprites["up"][1] = o.BackWalk
 	m.sprites["up"][2] = m.sprites["up"][0]
-	m.sprites["up"][3] = imaging.FlipH(o.BackWalk)
+	m.sprites["up"][3] = transform.FlipH(o.BackWalk)
 
 	m.sprites["left"][0] = o.SideIdle
 	m.sprites["left"][1] = o.SideWalk
-	m.sprites["right"][0] = imaging.FlipH(o.SideIdle)
-	m.sprites["right"][1] = imaging.FlipH(o.SideWalk)
+	m.sprites["right"][0] = transform.FlipH(o.SideIdle)
+	m.sprites["right"][1] = transform.FlipH(o.SideWalk)
 
 	return &m, nil
 }
@@ -106,11 +102,6 @@ var (
 
 func (m spriteTrainer) Init() tea.Cmd {
 	return nil
-}
-
-func (m spriteTrainer) WithBackground(i image.Image) spriteTrainer {
-	m.background = i
-	return m
 }
 
 func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
@@ -148,16 +139,9 @@ func (m spriteTrainer) View() image.Image {
 	return m.sprites[m.face][m.anim]
 }
 
-func imageAsString(r *lipgloss.Renderer, layers ...image.Image) string {
+func imageAsString(r *lipgloss.Renderer, img image.Image) string {
 	var b strings.Builder
-	var img image.Image = image.NewRGBA(image.Rect(0, 0, TileMaxPoint.X, TileMaxPoint.Y))
 	rec := img.Bounds()
-	for i := 0; i < len(layers); i++ {
-		if layers[i] == nil {
-			continue
-		}
-		img = imaging.Overlay(layers[i], img, image.Point{}, 1)
-	}
 	for y := 0; y < rec.Dy(); y += 2 {
 		if y != 0 {
 			b.WriteString("\n")
