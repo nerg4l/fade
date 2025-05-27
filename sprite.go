@@ -147,8 +147,8 @@ func imageAsString(r *lipgloss.Renderer, img image.Image) string {
 			b.WriteString("\n")
 		}
 		for x := 0; x < rec.Dx(); x++ {
-			top := img.At(x, y)
-			bottom := img.At(x, y+1)
+			top := img.At(rec.Min.X+x, rec.Min.Y+y)
+			bottom := img.At(rec.Min.X+x, rec.Min.Y+y+1)
 			b.WriteString(r.NewStyle().
 				Foreground(colorize(top)).
 				Background(colorize(bottom)).
