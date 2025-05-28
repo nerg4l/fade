@@ -119,7 +119,9 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 				m.face = k
 				m.anim = 1
 			}
-			cmds = append(cmds, doTick(m.id))
+			cmds = append(cmds, doTick(m.id), func() tea.Msg {
+				return moveMsg{Direction: k}
+			})
 			m.lock = true
 		}
 	case tickMsg:
@@ -129,6 +131,9 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 		if m.anim%2 == 1 {
 			m.anim++
 			m.lock = false
+			cmds = append(cmds, func() tea.Msg {
+				return moveMsg{Direction: m.face}
+			})
 		}
 	}
 	m.anim %= len(m.sprites[m.face])

@@ -26,6 +26,8 @@ type Game struct {
 	options gameOptions
 
 	r *lipgloss.Renderer
+
+	trainerPosition Point
 }
 
 type gameOptions struct {
@@ -45,6 +47,8 @@ func newGame(r *lipgloss.Renderer, o gameOptions) *Game {
 		trainer: *trainer,
 		options: o,
 		r:       r,
+
+		trainerPosition: Point{4, 4},
 	}
 }
 
@@ -57,6 +61,10 @@ func doTick(id string) tea.Cmd {
 	return tea.Tick(200*time.Millisecond, func(t time.Time) tea.Msg {
 		return tickMsg{ID: id, T: t}
 	})
+}
+
+type moveMsg struct {
+	Direction string
 }
 
 func (g *Game) Init() tea.Cmd {
@@ -81,6 +89,25 @@ func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		cmds = append(cmds, doTick("root"))
+	case moveMsg:
+		switch msg.Direction {
+		case "up":
+			if g.trainerPosition.Y > 2 {
+				g.trainerPosition.Y--
+			}
+		case "down":
+			if g.trainerPosition.Y < 6 {
+				g.trainerPosition.Y++
+			}
+		case "left":
+			if g.trainerPosition.X > 2 {
+				g.trainerPosition.X--
+			}
+		case "right":
+			if g.trainerPosition.X < 6 {
+				g.trainerPosition.X++
+			}
+		}
 	}
 	g.trainer, cmd = g.trainer.Update(msg)
 	cmds = append(cmds, cmd)
@@ -88,21 +115,41 @@ func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return g, tea.Batch(cmds...)
 }
 
+var worldMap = []byte{
+	'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+	'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+	'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
+	'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
+	'B', 'B', 'G', ' ', 'G', 'G', 'G', ' ', 'B', 'B',
+	'B', 'B', ' ', 'G', 'G', 'G', ' ', 'G', 'B', 'B',
+	'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
+	'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
+	'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+	'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+}
+
 func (g *Game) View() string {
 	visibleArea := image.NewRGBA(image.Rect(0, 0, 3*16, 3*16))
-	sr := g.options.Brick.Bounds()
+	center := image.Point{g.trainerPosition.X * 8, g.trainerPosition.Y * 8}
 	for y := 0; y < visibleArea.Rect.Dy(); y += 8 {
 		for x := 0; x < visibleArea.Rect.Dx(); x += 8 {
 			dp := image.Point{x, y}
-			r := image.Rectangle{dp, dp.Add(sr.Size())}
-			draw.Draw(visibleArea, r, g.options.Brick, sr.Min, draw.Src)
+			i, j := (center.X-16+x)/8, (center.Y-16+y)/8
+			src := g.options.Blank
+			switch worldMap[(j*10)+i] {
+			case 'B':
+				src = g.options.Brick
+			case 'G':
+				src = g.options.Grass
+			}
+			r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
+			draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Src)
 		}
 	}
 	src := g.trainer.View()
-	sr = src.Bounds()
 	dp := image.Point{16, 16}
-	r := image.Rectangle{dp, dp.Add(sr.Size())}
-	draw.Draw(visibleArea, r, src, sr.Min, draw.Over)
+	r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
+	draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Over)
 	return imageAsString(g.r, visibleArea)
 }
 
@@ -177,20 +224,9 @@ func loadOptions() (gameOptions, error) {
 	if err != nil {
 		return o, err
 	}
-	for y := 0; y < (tile.Bounds().Dy() / 8); y++ {
-		for x := 0; x < (tile.Bounds().Dx() / 8); x++ {
-			img := tile.SubImage(image.Rect(x*8, y*8, (x+1)*8, (y+1)*8))
-			v := Point{X: x, Y: y}
-			switch v {
-			case Point{Y: 0, X: 0}:
-				o.Blank = img
-			case Point{Y: 0, X: 1}:
-				o.Grass = img
-			case Point{Y: 1, X: 0}:
-				o.Brick = img
-			}
-		}
-	}
+	o.Blank = tile.SubImage(image.Rect(0, 0, 8, 8))
+	o.Grass = tile.SubImage(image.Rect(8, 0, 16, 8))
+	o.Brick = tile.SubImage(image.Rect(0, 8, 8, 16))
 	trainer, err := openSpriteSheet("sprite/trainer.png")
 	if err != nil {
 		return o, err
