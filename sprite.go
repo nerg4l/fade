@@ -39,13 +39,19 @@ func openSpriteSheet(name string) (SpriteSheet, error) {
 	return i.(SpriteSheet), nil
 }
 
+type Sprite[T any] struct {
+	Pos   Point
+	Model T
+
+	Focused   bool
+	TargetPos Point
+}
+
 type spriteTrainer struct {
 	id      string
 	sprites map[string][]image.Image
 	face    string
 	anim    int
-
-	lock bool
 }
 
 type trainerOptions struct {
@@ -108,21 +114,16 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.lock {
-			break
-		}
 		switch k := msg.String(); k {
 		case "down", "up", "left", "right":
 			if m.face == k {
 				m.anim++
+				cmds = append(cmds, doTick(m.id), func() tea.Msg {
+					return moveMsg{Direction: k}
+				})
 			} else {
 				m.face = k
-				m.anim = 1
 			}
-			cmds = append(cmds, doTick(m.id), func() tea.Msg {
-				return moveMsg{Direction: k}
-			})
-			m.lock = true
 		}
 	case tickMsg:
 		if m.id != msg.ID {
@@ -130,10 +131,6 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 		}
 		if m.anim%2 == 1 {
 			m.anim++
-			m.lock = false
-			cmds = append(cmds, func() tea.Msg {
-				return moveMsg{Direction: m.face}
-			})
 		}
 	}
 	m.anim %= len(m.sprites[m.face])

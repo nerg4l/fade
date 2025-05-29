@@ -22,12 +22,12 @@ import (
 )
 
 type Game struct {
-	trainer spriteTrainer
+	trainer Sprite[spriteTrainer]
 	options gameOptions
 
 	r *lipgloss.Renderer
 
-	trainerPosition Point
+	world *image.RGBA
 }
 
 type gameOptions struct {
@@ -37,18 +37,24 @@ type gameOptions struct {
 	Brick   image.Image
 }
 
-func newGame(r *lipgloss.Renderer, o gameOptions) *Game {
+func newGame(r *lipgloss.Renderer, o gameOptions, world *image.RGBA) *Game {
 	trainer, err := newTrainer(r, o.Trainer)
 	if err != nil {
 		return nil
 	}
 
 	return &Game{
-		trainer: *trainer,
+		trainer: Sprite[spriteTrainer]{
+			Pos:   Point{4 * 8, 4 * 8},
+			Model: *trainer,
+
+			TargetPos: Point{4 * 8, 4 * 8},
+			Focused:   true,
+		},
 		options: o,
 		r:       r,
 
-		trainerPosition: Point{4, 4},
+		world: world,
 	}
 }
 
@@ -67,12 +73,18 @@ type moveMsg struct {
 	Direction string
 }
 
+type animateMoveMsg struct{}
+
 func (g *Game) Init() tea.Cmd {
 	return tea.Batch(
 		tea.HideCursor,
 		doTick("root"),
-		g.trainer.Init(),
+		g.trainer.Model.Init(),
 	)
+}
+
+func AnimateInbetween() tea.Cmd {
+	return tea.Tick(20*time.Millisecond, func(_ time.Time) tea.Msg { return animateMoveMsg{} })
 }
 
 func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -90,66 +102,116 @@ func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmds = append(cmds, doTick("root"))
 	case moveMsg:
+		bounds := image.Rectangle{
+			image.Point{g.world.Rect.Min.X + 17, g.world.Rect.Min.Y + 17},
+			image.Point{g.world.Rect.Max.X - 16 - 17, g.world.Rect.Max.Y - 16 - 17},
+		}
 		switch msg.Direction {
 		case "up":
-			if g.trainerPosition.Y > 2 {
-				g.trainerPosition.Y--
+			if g.trainer.Pos.Y > bounds.Min.Y {
+				g.trainer.TargetPos = Point{g.trainer.Pos.X, g.trainer.Pos.Y - 16}
+				g.trainer.Focused = false
+				cmds = append(cmds, AnimateInbetween())
 			}
 		case "down":
-			if g.trainerPosition.Y < 6 {
-				g.trainerPosition.Y++
+			if g.trainer.Pos.Y < bounds.Max.Y {
+				g.trainer.TargetPos = Point{g.trainer.Pos.X, g.trainer.Pos.Y + 16}
+				g.trainer.Focused = false
+				cmds = append(cmds, AnimateInbetween())
 			}
 		case "left":
-			if g.trainerPosition.X > 2 {
-				g.trainerPosition.X--
+			if g.trainer.Pos.X > bounds.Min.X {
+				g.trainer.TargetPos = Point{g.trainer.Pos.X - 16, g.trainer.Pos.Y}
+				g.trainer.Focused = false
+				cmds = append(cmds, AnimateInbetween())
 			}
 		case "right":
-			if g.trainerPosition.X < 6 {
-				g.trainerPosition.X++
+			if g.trainer.Pos.X < bounds.Max.X {
+				g.trainer.TargetPos = Point{g.trainer.Pos.X + 16, g.trainer.Pos.Y}
+				g.trainer.Focused = false
+				cmds = append(cmds, AnimateInbetween())
 			}
 		}
+	case animateMoveMsg:
+		g.trainer.Pos.X += Sign(g.trainer.TargetPos.X - g.trainer.Pos.X)
+		g.trainer.Pos.Y += Sign(g.trainer.TargetPos.Y - g.trainer.Pos.Y)
+		if g.trainer.Pos == g.trainer.TargetPos {
+			g.trainer.Focused = true
+		} else {
+			cmds = append(cmds, AnimateInbetween())
+		}
 	}
-	g.trainer, cmd = g.trainer.Update(msg)
+	if _, ok := msg.(tea.KeyMsg); !ok || g.trainer.Focused {
+		g.trainer.Model, cmd = g.trainer.Model.Update(msg)
+	}
 	cmds = append(cmds, cmd)
 
 	return g, tea.Batch(cmds...)
 }
 
-var worldMap = []byte{
-	'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-	'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-	'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
-	'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
-	'B', 'B', 'G', ' ', 'G', 'G', 'G', ' ', 'B', 'B',
-	'B', 'B', ' ', 'G', 'G', 'G', ' ', 'G', 'B', 'B',
-	'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
-	'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
-	'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-	'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+func Sign(x int) int {
+	switch {
+	case x < 0:
+		return -1
+	case x > 0:
+		return 1
+	}
+	return 0
+}
+
+var worldMap = func() *image.Gray {
+	img := image.NewGray(image.Rect(0, 0, 10, 10))
+	img.Pix = []byte{
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
+		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
+		'B', 'B', 'G', ' ', 'G', 'G', 'G', ' ', 'B', 'B',
+		'B', 'B', ' ', 'G', 'G', 'G', ' ', 'G', 'B', 'B',
+		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
+		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+	}
+	return img
+}()
+
+func worldImage(o gameOptions, m *image.Gray) *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, m.Bounds().Dx()*8, m.Bounds().Dy()*8))
+	for y := 0; y < m.Bounds().Dy(); y++ {
+		for x := 0; x < m.Bounds().Dx(); x++ {
+			src := o.Blank
+			switch m.GrayAt(x, y).Y {
+			case 'B':
+				src = o.Brick
+			case 'G':
+				src = o.Grass
+			}
+			dp := image.Point{x * 8, y * 8}
+			r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
+			draw.Draw(img, r, src, src.Bounds().Min, draw.Src)
+		}
+	}
+	return img
 }
 
 func (g *Game) View() string {
 	visibleArea := image.NewRGBA(image.Rect(0, 0, 3*16, 3*16))
-	center := image.Point{g.trainerPosition.X * 8, g.trainerPosition.Y * 8}
-	for y := 0; y < visibleArea.Rect.Dy(); y += 8 {
-		for x := 0; x < visibleArea.Rect.Dx(); x += 8 {
-			dp := image.Point{x, y}
-			i, j := (center.X-16+x)/8, (center.Y-16+y)/8
-			src := g.options.Blank
-			switch worldMap[(j*10)+i] {
-			case 'B':
-				src = g.options.Brick
-			case 'G':
-				src = g.options.Grass
-			}
-			r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
-			draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Src)
-		}
+	{
+		src := g.world.SubImage(image.Rect(
+			g.trainer.Pos.X-16, g.trainer.Pos.Y-16,
+			g.trainer.Pos.X+32, g.trainer.Pos.Y+32,
+		))
+		dp := image.Point{}
+		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
+		draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Src)
 	}
-	src := g.trainer.View()
-	dp := image.Point{16, 16}
-	r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
-	draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Over)
+	{
+		src := g.trainer.Model.View()
+		dp := image.Point{16, 16}
+		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
+		draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Over)
+	}
 	return imageAsString(g.r, visibleArea)
 }
 
@@ -166,8 +228,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	world := worldImage(o, worldMap)
+
 	if *addr == "-" {
-		m := newGame(lipgloss.NewRenderer(os.Stdout), o)
+		m := newGame(lipgloss.NewRenderer(os.Stdout), o, world)
 		p := tea.NewProgram(m, options...)
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
@@ -185,7 +249,7 @@ func main() {
 		ssh.PasswordAuth(func(ssh.Context, string) bool { return false }),
 		wish.WithMiddleware(
 			bubbletea.MiddlewareWithColorProfile(func(sess ssh.Session) (tea.Model, []tea.ProgramOption) {
-				m := newGame(bubbletea.MakeRenderer(sess), o)
+				m := newGame(bubbletea.MakeRenderer(sess), o, world)
 				return m, append(options, tea.WithContext(sess.Context()))
 			}, termenv.ANSI),
 			logging.Middleware(),
