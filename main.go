@@ -84,7 +84,7 @@ func (g *Game) Init() tea.Cmd {
 }
 
 func AnimateInbetween() tea.Cmd {
-	return tea.Tick(20*time.Millisecond, func(_ time.Time) tea.Msg { return animateMoveMsg{} })
+	return tea.Tick(10*time.Millisecond, func(_ time.Time) tea.Msg { return animateMoveMsg{} })
 }
 
 func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
