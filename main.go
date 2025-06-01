@@ -10,10 +10,10 @@ import (
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
-	"github.com/muesli/termenv"
 	flag "github.com/spf13/pflag"
 	"image"
 	"image/draw"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -24,6 +24,7 @@ import (
 type Game struct {
 	trainer Sprite[spriteTrainer]
 	options gameOptions
+	sound   *soundServer
 
 	r *lipgloss.Renderer
 
@@ -37,25 +38,30 @@ type gameOptions struct {
 	Brick   image.Image
 }
 
-func newGame(r *lipgloss.Renderer, o gameOptions, world *image.RGBA) *Game {
-	trainer, err := newTrainer(r, o.Trainer)
-	if err != nil {
-		return nil
-	}
+func newGame(r *lipgloss.Renderer, o gameOptions, world *image.RGBA) Game {
+	trainer := newTrainer(o.Trainer)
 
-	return &Game{
+	ss := soundServer{w: io.Discard, c: make(chan soundMsg), lc: make(chan soundLoopMsg)}
+
+	return Game{
 		trainer: Sprite[spriteTrainer]{
 			Pos:   Point{4 * 8, 4 * 8},
-			Model: *trainer,
+			Model: trainer,
 
 			TargetPos: Point{4 * 8, 4 * 8},
 			Focused:   true,
 		},
 		options: o,
+		sound:   &ss,
 		r:       r,
 
 		world: world,
 	}
+}
+
+func (g Game) WithSound(w io.Writer) Game {
+	g.sound.w = w
+	return g
 }
 
 type tickMsg struct {
@@ -75,10 +81,9 @@ type moveMsg struct {
 
 type animateMoveMsg struct{}
 
-func (g *Game) Init() tea.Cmd {
+func (g Game) Init() tea.Cmd {
 	return tea.Batch(
 		tea.HideCursor,
-		doTick("root"),
 		g.trainer.Model.Init(),
 	)
 }
@@ -87,7 +92,7 @@ func AnimateInbetween() tea.Cmd {
 	return tea.Tick(10*time.Millisecond, func(_ time.Time) tea.Msg { return animateMoveMsg{} })
 }
 
-func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (g Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
@@ -96,11 +101,6 @@ func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return g, tea.Quit
 		}
-	case tickMsg:
-		if msg.ID != "root" {
-			break
-		}
-		cmds = append(cmds, doTick("root"))
 	case moveMsg:
 		bounds := image.Rectangle{
 			image.Point{g.world.Rect.Min.X + 17, g.world.Rect.Min.Y + 17},
@@ -133,8 +133,8 @@ func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case animateMoveMsg:
-		g.trainer.Pos.X += Sign(g.trainer.TargetPos.X - g.trainer.Pos.X)
-		g.trainer.Pos.Y += Sign(g.trainer.TargetPos.Y - g.trainer.Pos.Y)
+		g.trainer.Pos.X += 2 * Sign(g.trainer.TargetPos.X-g.trainer.Pos.X)
+		g.trainer.Pos.Y += 2 * Sign(g.trainer.TargetPos.Y-g.trainer.Pos.Y)
 		if g.trainer.Pos == g.trainer.TargetPos {
 			g.trainer.Focused = true
 		} else {
@@ -144,6 +144,7 @@ func (g *Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if _, ok := msg.(tea.KeyMsg); !ok || g.trainer.Focused {
 		g.trainer.Model, cmd = g.trainer.Model.Update(msg)
 	}
+	g.sound.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return g, tea.Batch(cmds...)
@@ -160,18 +161,22 @@ func Sign(x int) int {
 }
 
 var worldMap = func() *image.Gray {
-	img := image.NewGray(image.Rect(0, 0, 10, 10))
+	img := image.NewGray(image.Rect(0, 0, 14, 14))
 	img.Pix = []byte{
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
-		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
-		'B', 'B', 'G', ' ', 'G', 'G', 'G', ' ', 'B', 'B',
-		'B', 'B', ' ', 'G', 'G', 'G', ' ', 'G', 'B', 'B',
-		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
-		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
+		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
+		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
 	}
 	return img
 }()
@@ -195,7 +200,7 @@ func worldImage(o gameOptions, m *image.Gray) *image.RGBA {
 	return img
 }
 
-func (g *Game) View() string {
+func (g Game) View() string {
 	visibleArea := image.NewRGBA(image.Rect(0, 0, 3*16, 3*16))
 	{
 		src := g.world.SubImage(image.Rect(
@@ -215,6 +220,19 @@ func (g *Game) View() string {
 	return imageAsString(g.r, visibleArea)
 }
 
+func extendGameWithArgs(g Game, sound io.Writer, args []string) Game {
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "audio", "sound":
+			if len(args) > i+1 && args[i+1] == "on" {
+				g = g.WithSound(sound)
+			}
+			i++
+		}
+	}
+	return g
+}
+
 func main() {
 	addr := flag.StringP("addr", "a", "0.0.0.0:5000", "SSH server port")
 	flag.Parse()
@@ -231,7 +249,11 @@ func main() {
 	world := worldImage(o, worldMap)
 
 	if *addr == "-" {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		m := newGame(lipgloss.NewRenderer(os.Stdout), o, world)
+		m = extendGameWithArgs(m, os.Stderr, flag.Args())
+		go m.sound.Start(ctx)
 		p := tea.NewProgram(m, options...)
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
@@ -243,15 +265,15 @@ func main() {
 	s, err := wish.NewServer(
 		wish.WithAddress(*addr),
 		wish.WithHostKeyPath("storage/.ssh/id_fade"),
-		// Accept any public key.
-		ssh.PublicKeyAuth(func(ssh.Context, ssh.PublicKey) bool { return true }),
-		// Do not accept password auth.
-		ssh.PasswordAuth(func(ssh.Context, string) bool { return false }),
+		ssh.PublicKeyAuth(func(ssh.Context, ssh.PublicKey) bool { return true }), // Accept any public key.
+		ssh.PasswordAuth(func(ssh.Context, string) bool { return false }),        // Do not accept password auth.
 		wish.WithMiddleware(
-			bubbletea.MiddlewareWithColorProfile(func(sess ssh.Session) (tea.Model, []tea.ProgramOption) {
+			bubbletea.Middleware(func(sess ssh.Session) (tea.Model, []tea.ProgramOption) {
 				m := newGame(bubbletea.MakeRenderer(sess), o, world)
+				m = extendGameWithArgs(m, sess.Stderr(), sess.Command())
+				go m.sound.Start(sess.Context())
 				return m, append(options, tea.WithContext(sess.Context()))
-			}, termenv.ANSI),
+			}),
 			logging.Middleware(),
 		),
 	)

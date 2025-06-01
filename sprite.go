@@ -63,7 +63,7 @@ type trainerOptions struct {
 	SideWalk  image.Image
 }
 
-func newTrainer(r *lipgloss.Renderer, o trainerOptions) (*spriteTrainer, error) {
+func newTrainer(o trainerOptions) spriteTrainer {
 	m := spriteTrainer{id: generateId(), face: "down"}
 	m.sprites = map[string][]image.Image{
 		"down":  make([]image.Image, 4),
@@ -87,7 +87,7 @@ func newTrainer(r *lipgloss.Renderer, o trainerOptions) (*spriteTrainer, error) 
 	m.sprites["right"][0] = transform.FlipH(o.SideIdle)
 	m.sprites["right"][1] = transform.FlipH(o.SideWalk)
 
-	return &m, nil
+	return m
 }
 
 func generateId() string {
@@ -120,6 +120,8 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 				m.anim++
 				cmds = append(cmds, doTick(m.id), func() tea.Msg {
 					return moveMsg{Direction: k}
+				}, func() tea.Msg {
+					return soundMsg("walk")
 				})
 			} else {
 				m.face = k
