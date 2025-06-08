@@ -215,8 +215,8 @@ func (g Game) View() string {
 	visibleArea := image.NewNRGBA(image.Rect(0, 0, w, h))
 	{
 		src := g.world.SubImage(image.Rect(
-			g.trainer.Pos.X-(w/2-8), g.trainer.Pos.Y-(w/2-8),
-			g.trainer.Pos.X+(w/2+8), g.trainer.Pos.Y+(w/2+8),
+			g.trainer.Pos.X-(w/2-8), g.trainer.Pos.Y-(h/2-8),
+			g.trainer.Pos.X+(w/2+8), g.trainer.Pos.Y+(h/2+8),
 		))
 		dp := image.Point{}
 		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
