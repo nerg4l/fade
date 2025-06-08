@@ -4,7 +4,7 @@ Experimenting with [Wish](https://github.com/charmbracelet/wish) (part of [Charm
 
 We can create a very simple video game using the `▀` as two pixels and coloring the foreground and background based on the wanted color. Animation demo:
 
-![Pokemon GB](https://vhs.charm.sh/vhs-7we4N7EPmQqJZTKMDbsHdD.gif)
+![Pokemon GB](https://vhs.charm.sh/vhs-xhIwUtrcYtEHs80zjB3mb.gif)
 
 I'm wondering if this could be something people would be interested in a pixelated multiplayer game that can be played over SSH.
 
