@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"embed"
 	"encoding/base64"
-	"fmt"
 	"github.com/anthonynsimon/bild/transform"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -12,10 +11,6 @@ import (
 	"image/color"
 	"image/png"
 	"strings"
-)
-
-var (
-	TileMaxPoint = image.Point{X: 16, Y: 16}
 )
 
 //go:embed sprite/*
@@ -52,6 +47,7 @@ type spriteTrainer struct {
 	sprites map[string][]image.Image
 	face    string
 	anim    int
+	lock    bool
 }
 
 type trainerOptions struct {
@@ -101,9 +97,9 @@ func generateId() string {
 }
 
 var (
-	PalletWhite     = "#f8f8f8"
-	PalletBlack     = "#141414"
-	PalletHighlight = "#a8a8a8"
+	PalletWhite     = color.NRGBA{R: 0xf8, G: 0xf8, B: 0xf8, A: 0xff}
+	PalletBlack     = color.NRGBA{R: 0x14, G: 0x14, B: 0x14, A: 0xff}
+	PalletHighlight = color.NRGBA{R: 0xa8, G: 0xa8, B: 0xa8, A: 0xff}
 )
 
 func (m spriteTrainer) Init() tea.Cmd {
@@ -114,11 +110,15 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.lock {
+			break
+		}
 		switch k := msg.String(); k {
 		case "down", "up", "left", "right":
 			if m.face == k {
+				m.lock = true
 				m.anim++
-				cmds = append(cmds, doTick(m.id), func() tea.Msg {
+				cmds = append(cmds, doTick(7*frameDuration, m.id), func() tea.Msg {
 					return moveMsg{Direction: k}
 				}, func() tea.Msg {
 					return soundMsg("walk")
@@ -128,6 +128,9 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 			}
 		}
 	case tickMsg:
+		if m.lock {
+			m.lock = false
+		}
 		if m.id != msg.ID {
 			break
 		}
@@ -146,6 +149,21 @@ func (m spriteTrainer) View() image.Image {
 func imageAsString(r *lipgloss.Renderer, img image.Image) string {
 	var b strings.Builder
 	rec := img.Bounds()
+
+	var colorCache = map[color.Color]map[color.Color]string{
+		PalletWhite:     {},
+		PalletBlack:     {},
+		PalletHighlight: {},
+	}
+	for p1 := range colorCache {
+		for p2 := range colorCache {
+			colorCache[p1][p2] = r.NewStyle().
+				Foreground(colorize(p1)).
+				Background(colorize(p2)).
+				Render("▀")
+		}
+	}
+
 	for y := 0; y < rec.Dy(); y += 2 {
 		if y != 0 {
 			b.WriteString("\n")
@@ -153,26 +171,26 @@ func imageAsString(r *lipgloss.Renderer, img image.Image) string {
 		for x := 0; x < rec.Dx(); x++ {
 			top := img.At(rec.Min.X+x, rec.Min.Y+y)
 			bottom := img.At(rec.Min.X+x, rec.Min.Y+y+1)
-			b.WriteString(r.NewStyle().
-				Foreground(colorize(top)).
-				Background(colorize(bottom)).
-				Render("▀"))
+			s, ok := colorCache[top][bottom]
+			if ok {
+				b.WriteString(s)
+			} else {
+				b.WriteString(r.NewStyle().
+					Foreground(colorize(top)).
+					Background(colorize(bottom)).
+					Render("▀"))
+			}
 		}
 	}
 	return b.String()
 }
 
 func colorize(c color.Color) lipgloss.TerminalColor {
-	r, g, b, a := c.RGBA()
-	if a == 0 {
-		return lipgloss.CompleteColor{TrueColor: PalletWhite, ANSI256: "250", ANSI: "7"}
-	}
-	hex := fmt.Sprintf("#%02x%02x%02x", uint8(r), uint8(g), uint8(b))
-	switch hex {
+	switch c {
 	case PalletWhite:
-		return lipgloss.CompleteColor{TrueColor: PalletWhite, ANSI256: "250", ANSI: "7"}
+		return lipgloss.CompleteColor{TrueColor: "#f8f8f8", ANSI256: "250", ANSI: "7"}
 	case PalletBlack:
-		return lipgloss.CompleteColor{TrueColor: PalletBlack, ANSI256: "237", ANSI: "0"}
+		return lipgloss.CompleteColor{TrueColor: "#141414", ANSI256: "237", ANSI: "0"}
 	case PalletHighlight:
 		return lipgloss.CompleteColor{TrueColor: "#cc0000", ANSI256: "124", ANSI: "1"}
 	default:

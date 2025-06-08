@@ -28,7 +28,7 @@ type Game struct {
 
 	r *lipgloss.Renderer
 
-	world *image.RGBA
+	world *image.NRGBA
 }
 
 type gameOptions struct {
@@ -38,7 +38,7 @@ type gameOptions struct {
 	Brick   image.Image
 }
 
-func newGame(r *lipgloss.Renderer, o gameOptions, world *image.RGBA) Game {
+func newGame(r *lipgloss.Renderer, o gameOptions, world *image.NRGBA) Game {
 	trainer := newTrainer(o.Trainer)
 
 	ss := soundServer{w: io.Discard, c: make(chan soundMsg), lc: make(chan soundLoopMsg)}
@@ -69,8 +69,8 @@ type tickMsg struct {
 	T  time.Time
 }
 
-func doTick(id string) tea.Cmd {
-	return tea.Tick(200*time.Millisecond, func(t time.Time) tea.Msg {
+func doTick(d time.Duration, id string) tea.Cmd {
+	return tea.Tick(d, func(t time.Time) tea.Msg {
 		return tickMsg{ID: id, T: t}
 	})
 }
@@ -88,8 +88,10 @@ func (g Game) Init() tea.Cmd {
 	)
 }
 
+var frameDuration = 30 * time.Millisecond
+
 func AnimateInbetween() tea.Cmd {
-	return tea.Tick(10*time.Millisecond, func(_ time.Time) tea.Msg { return animateMoveMsg{} })
+	return tea.Tick(frameDuration, func(_ time.Time) tea.Msg { return animateMoveMsg{} })
 }
 
 func (g Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -103,8 +105,8 @@ func (g Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case moveMsg:
 		bounds := image.Rectangle{
-			image.Point{g.world.Rect.Min.X + 17, g.world.Rect.Min.Y + 17},
-			image.Point{g.world.Rect.Max.X - 16 - 17, g.world.Rect.Max.Y - 16 - 17},
+			image.Point{g.world.Rect.Min.X + (2 * 16) + 1, g.world.Rect.Min.Y + (2 * 16) + 1},
+			image.Point{g.world.Rect.Max.X - 16 - ((2 * 16) + 1), g.world.Rect.Max.Y - 16 - ((2 * 16) + 1)},
 		}
 		switch msg.Direction {
 		case "up":
@@ -161,28 +163,32 @@ func Sign(x int) int {
 }
 
 var worldMap = func() *image.Gray {
-	img := image.NewGray(image.Rect(0, 0, 14, 14))
+	img := image.NewGray(image.Rect(0, 0, 18, 18))
 	img.Pix = []byte{
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
-		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
-		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
-		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
-		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
-		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
-		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
-		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
-		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
-		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
 	}
 	return img
 }()
 
-func worldImage(o gameOptions, m *image.Gray) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, m.Bounds().Dx()*8, m.Bounds().Dy()*8))
+func worldImage(o gameOptions, m *image.Gray) *image.NRGBA {
+	img := image.NewNRGBA(image.Rect(0, 0, m.Bounds().Dx()*8, m.Bounds().Dy()*8))
 	for y := 0; y < m.Bounds().Dy(); y++ {
 		for x := 0; x < m.Bounds().Dx(); x++ {
 			src := o.Blank
@@ -201,11 +207,12 @@ func worldImage(o gameOptions, m *image.Gray) *image.RGBA {
 }
 
 func (g Game) View() string {
-	visibleArea := image.NewRGBA(image.Rect(0, 0, 3*16, 3*16))
+	w, h := 5*16, 5*16
+	visibleArea := image.NewNRGBA(image.Rect(0, 0, w, h))
 	{
 		src := g.world.SubImage(image.Rect(
-			g.trainer.Pos.X-16, g.trainer.Pos.Y-16,
-			g.trainer.Pos.X+32, g.trainer.Pos.Y+32,
+			g.trainer.Pos.X-(w/2-8), g.trainer.Pos.Y-(w/2-8),
+			g.trainer.Pos.X+(w/2+8), g.trainer.Pos.Y+(w/2+8),
 		))
 		dp := image.Point{}
 		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
@@ -213,7 +220,7 @@ func (g Game) View() string {
 	}
 	{
 		src := g.trainer.Model.View()
-		dp := image.Point{16, 16}
+		dp := image.Point{w/2 - 8, h/2 - 8}
 		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
 		draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Over)
 	}

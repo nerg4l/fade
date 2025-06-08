@@ -37,3 +37,9 @@ done &
 
 ssh -o StrictHostKeychecking=no -t fade.nergal.xyz sound on 2> /tmp/audio_stream
 ```
+
+## Miscellaneous notes
+
+Sprites:
+- https://www.spriters-resource.com/fullview/63033/
+- https://tcrf.net/Pok%C3%A9mon_Red_and_Blue/Unseen_Graphics
