@@ -48,10 +48,10 @@ func newGame(r *lipgloss.Renderer, o gameOptions, world *image.NRGBA) Game {
 
 	return Game{
 		trainer: Sprite[spriteTrainer]{
-			Pos:   Point{4 * 16, 4 * 16},
+			Pos:   Point{world.Rect.Dx()/2 - 8, world.Rect.Dy()/2 - 8},
 			Model: trainer,
 
-			TargetPos: Point{4 * 16, 4 * 16},
+			TargetPos: Point{world.Rect.Dx()/2 - 8, world.Rect.Dy()/2 - 8},
 			Focused:   true,
 		},
 		options: o,
@@ -109,8 +109,8 @@ func (g Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case moveMsg:
 		bounds := image.Rectangle{
-			image.Point{g.world.Rect.Min.X + (2 * 16) + 1, g.world.Rect.Min.Y + (2 * 16) + 1},
-			image.Point{g.world.Rect.Max.X - 16 - ((2 * 16) + 1), g.world.Rect.Max.Y - 16 - ((2 * 16) + 1)},
+			image.Point{g.world.Rect.Min.X + (1 * 16) + 1, g.world.Rect.Min.Y + (1 * 16) + 1},
+			image.Point{g.world.Rect.Max.X - 16 - ((1 * 16) + 1), g.world.Rect.Max.Y - 16 - ((1 * 16) + 1)},
 		}
 		switch msg.Direction {
 		case "up":
@@ -167,26 +167,22 @@ func Sign(x int) int {
 }
 
 var worldMap = func() *image.Gray {
-	img := image.NewGray(image.Rect(0, 0, 18, 18))
+	img := image.NewGray(image.Rect(0, 0, 14, 14))
 	img.Pix = []byte{
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
-		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
+		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
+		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
+		'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B',
 	}
 	return img
 }()
@@ -213,12 +209,19 @@ func worldImage(o gameOptions, m *image.Gray) *image.NRGBA {
 func (g Game) View() string {
 	w, h := 5*16, 5*16
 	visibleArea := image.NewNRGBA(image.Rect(0, 0, w, h))
+	draw.Draw(visibleArea, visibleArea.Bounds(), &image.Uniform{PalletBlack}, image.ZP, draw.Src)
 	{
 		src := g.world.SubImage(image.Rect(
 			g.trainer.Pos.X-(w/2-8), g.trainer.Pos.Y-(h/2-8),
 			g.trainer.Pos.X+(w/2+8), g.trainer.Pos.Y+(h/2+8),
 		))
 		dp := image.Point{}
+		if g.trainer.Pos.X-(w/2-8) < 0 {
+			dp.X -= g.trainer.Pos.X - (w/2 - 8)
+		}
+		if g.trainer.Pos.Y-(h/2-8) < 0 {
+			dp.Y -= g.trainer.Pos.Y - (h/2 - 8)
+		}
 		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
 		draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Src)
 	}
