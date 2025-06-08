@@ -10,7 +10,6 @@ import (
 	"image"
 	"image/color"
 	"image/png"
-	"strings"
 )
 
 //go:embed sprite/*
@@ -144,45 +143,6 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 
 func (m spriteTrainer) View() image.Image {
 	return m.sprites[m.face][m.anim]
-}
-
-func imageAsString(r *lipgloss.Renderer, img image.Image) string {
-	var b strings.Builder
-	rec := img.Bounds()
-
-	colors := []color.Color{PalletWhite, PalletBlack, PalletHighlight}
-	var colorCache = make(map[struct{ Top, Bottom color.Color }]string, len(colors)*len(colors))
-	for _, top := range colors {
-		for _, bottom := range colors {
-			colorCache[struct {
-				Top    color.Color
-				Bottom color.Color
-			}{Top: top, Bottom: bottom}] = r.NewStyle().
-				Foreground(colorize(top)).
-				Background(colorize(bottom)).
-				Render("▀")
-		}
-	}
-
-	for y := 0; y < rec.Dy(); y += 2 {
-		if y != 0 {
-			b.WriteString("\n")
-		}
-		for x := 0; x < rec.Dx(); x++ {
-			top := img.At(rec.Min.X+x, rec.Min.Y+y)
-			bottom := img.At(rec.Min.X+x, rec.Min.Y+y+1)
-			s, ok := colorCache[struct{ Top, Bottom color.Color }{Top: top, Bottom: bottom}]
-			if ok {
-				b.WriteString(s)
-			} else {
-				b.WriteString(r.NewStyle().
-					Foreground(colorize(top)).
-					Background(colorize(bottom)).
-					Render("▀"))
-			}
-		}
-	}
-	return b.String()
 }
 
 func colorize(c color.Color) lipgloss.TerminalColor {

@@ -12,11 +12,13 @@ import (
 	"github.com/charmbracelet/wish/logging"
 	flag "github.com/spf13/pflag"
 	"image"
+	"image/color"
 	"image/draw"
 	"io"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -28,7 +30,8 @@ type Game struct {
 
 	r *lipgloss.Renderer
 
-	world *image.NRGBA
+	world      *image.NRGBA
+	pixelCache map[struct{ Top, Bottom color.Color }]string
 }
 
 type gameOptions struct {
@@ -55,7 +58,8 @@ func newGame(r *lipgloss.Renderer, o gameOptions, world *image.NRGBA) Game {
 		sound:   &ss,
 		r:       r,
 
-		world: world,
+		world:      world,
+		pixelCache: make(map[struct{ Top, Bottom color.Color }]string),
 	}
 }
 
@@ -224,7 +228,33 @@ func (g Game) View() string {
 		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
 		draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Over)
 	}
-	return imageAsString(g.r, visibleArea)
+	return g.imageAsString(visibleArea)
+}
+
+func (g Game) imageAsString(img image.Image) string {
+	var b strings.Builder
+	rec := img.Bounds()
+
+	for y := 0; y < rec.Dy(); y += 2 {
+		if y != 0 {
+			b.WriteString("\n")
+		}
+		for x := 0; x < rec.Dx(); x++ {
+			top := img.At(rec.Min.X+x, rec.Min.Y+y)
+			bottom := img.At(rec.Min.X+x, rec.Min.Y+y+1)
+			k := struct{ Top, Bottom color.Color }{Top: top, Bottom: bottom}
+			s, ok := g.pixelCache[k]
+			if !ok {
+				s = g.r.NewStyle().
+					Foreground(colorize(top)).
+					Background(colorize(bottom)).
+					Render("▀")
+				g.pixelCache[k] = s
+			}
+			b.WriteString(s)
+		}
+	}
+	return b.String()
 }
 
 func extendGameWithArgs(g Game, sound io.Writer, args []string) Game {
