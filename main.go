@@ -45,10 +45,10 @@ func newGame(r *lipgloss.Renderer, o gameOptions, world *image.NRGBA) Game {
 
 	return Game{
 		trainer: Sprite[spriteTrainer]{
-			Pos:   Point{4 * 8, 4 * 8},
+			Pos:   Point{4 * 16, 4 * 16},
 			Model: trainer,
 
-			TargetPos: Point{4 * 8, 4 * 8},
+			TargetPos: Point{4 * 16, 4 * 16},
 			Focused:   true,
 		},
 		options: o,
