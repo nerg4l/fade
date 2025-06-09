@@ -49,7 +49,7 @@ type spriteTrainer struct {
 	lock    bool
 }
 
-type trainerOptions struct {
+type trainerAssets struct {
 	FrontIdle image.Image
 	FrontWalk image.Image
 	BackIdle  image.Image
@@ -58,7 +58,7 @@ type trainerOptions struct {
 	SideWalk  image.Image
 }
 
-func newTrainer(o trainerOptions) spriteTrainer {
+func newTrainer(a trainerAssets) spriteTrainer {
 	m := spriteTrainer{id: generateId(), face: "down"}
 	m.sprites = map[string][]image.Image{
 		"down":  make([]image.Image, 4),
@@ -67,20 +67,20 @@ func newTrainer(o trainerOptions) spriteTrainer {
 		"right": make([]image.Image, 2),
 	}
 
-	m.sprites["down"][0] = o.FrontIdle
-	m.sprites["down"][1] = o.FrontWalk
+	m.sprites["down"][0] = a.FrontIdle
+	m.sprites["down"][1] = a.FrontWalk
 	m.sprites["down"][2] = m.sprites["down"][0]
-	m.sprites["down"][3] = transform.FlipH(o.FrontWalk)
+	m.sprites["down"][3] = transform.FlipH(a.FrontWalk)
 
-	m.sprites["up"][0] = o.BackIdle
-	m.sprites["up"][1] = o.BackWalk
+	m.sprites["up"][0] = a.BackIdle
+	m.sprites["up"][1] = a.BackWalk
 	m.sprites["up"][2] = m.sprites["up"][0]
-	m.sprites["up"][3] = transform.FlipH(o.BackWalk)
+	m.sprites["up"][3] = transform.FlipH(a.BackWalk)
 
-	m.sprites["left"][0] = o.SideIdle
-	m.sprites["left"][1] = o.SideWalk
-	m.sprites["right"][0] = transform.FlipH(o.SideIdle)
-	m.sprites["right"][1] = transform.FlipH(o.SideWalk)
+	m.sprites["left"][0] = a.SideIdle
+	m.sprites["left"][1] = a.SideWalk
+	m.sprites["right"][0] = transform.FlipH(a.SideIdle)
+	m.sprites["right"][1] = transform.FlipH(a.SideWalk)
 
 	return m
 }
