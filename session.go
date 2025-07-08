@@ -148,19 +148,11 @@ func (g GameSession) View() string {
 	visibleArea := image.NewNRGBA(image.Rect(0, 0, w, h))
 	draw.Draw(visibleArea, visibleArea.Bounds(), &image.Uniform{PalletBlack}, image.ZP, draw.Src)
 	{
-		src := g.world.SubImage(image.Rect(
-			g.trainer.Pos.X-(w/2-8), g.trainer.Pos.Y-(h/2-8),
-			g.trainer.Pos.X+(w/2+8), g.trainer.Pos.Y+(h/2+8),
-		))
-		dp := image.Point{}
-		if g.trainer.Pos.X-(w/2-8) < 0 {
-			dp.X -= g.trainer.Pos.X - (w/2 - 8)
-		}
-		if g.trainer.Pos.Y-(h/2-8) < 0 {
-			dp.Y -= g.trainer.Pos.Y - (h/2 - 8)
-		}
-		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
-		draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Src)
+		src := g.world
+		r := image.Rectangle{Max: image.Point{X: w, Y: h}}
+		draw.Draw(visibleArea, r, src, image.Point{
+			X: g.trainer.Pos.X - (w/2 - 8), Y: g.trainer.Pos.Y - (h/2 - 8),
+		}, draw.Src)
 	}
 	{
 		src := g.trainer.Model.View()
