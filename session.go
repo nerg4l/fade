@@ -152,12 +152,12 @@ func Sign(x int) int {
 
 func (g GameSession) View() tea.View {
 	w, h := 5*16, 5*16
-	visibleArea := image.NewNRGBA(image.Rect(0, 0, w, h))
-	draw.Draw(visibleArea, visibleArea.Bounds(), &image.Uniform{PalletBlack}, image.Point{}, draw.Src)
+	viewPort := image.NewNRGBA(image.Rect(0, 0, w, h))
+	draw.Draw(viewPort, viewPort.Bounds(), &image.Uniform{PalletBlack}, image.Point{}, draw.Src)
 	{
 		src := g.world
 		r := image.Rectangle{Max: image.Point{X: w, Y: h}}
-		draw.Draw(visibleArea, r, src, image.Point{
+		draw.Draw(viewPort, r, src, image.Point{
 			X: g.trainer.Pos.X - (w/2 - 8), Y: g.trainer.Pos.Y - (h/2 - 8),
 		}, draw.Src)
 	}
@@ -165,10 +165,10 @@ func (g GameSession) View() tea.View {
 		src := g.trainer.Model.View()
 		dp := image.Point{w/2 - 8, h/2 - 8}
 		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
-		draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Over)
+		draw.Draw(viewPort, r, src, src.Bounds().Min, draw.Over)
 	}
 	var v tea.View
-	v.SetContent(g.imageAsString(visibleArea))
+	v.SetContent(g.imageAsString(viewPort))
 	v.Cursor = nil
 	v.AltScreen = true
 	return v
