@@ -4,28 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish"
-	"github.com/charmbracelet/wish/bubbletea"
-	"github.com/charmbracelet/wish/logging"
-	flag "github.com/spf13/pflag"
 	"image"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/wish/v2"
+	"charm.land/wish/v2/bubbletea"
+	"charm.land/wish/v2/logging"
+	"github.com/charmbracelet/colorprofile"
+	"github.com/charmbracelet/ssh"
+	flag "github.com/spf13/pflag"
 )
 
 func main() {
 	addr := flag.StringP("addr", "a", "0.0.0.0:5000", "SSH server port")
 	flag.Parse()
-
-	options := []tea.ProgramOption{
-		tea.WithAltScreen(),
-	}
 
 	o, err := loadAssets()
 	if err != nil {
@@ -37,10 +34,10 @@ func main() {
 	if *addr == "-" {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		m := newGameSession(lipgloss.NewRenderer(os.Stdout), o, world)
+		m := newGameSession(colorprofile.Detect(os.Stdout, os.Environ()), o, world)
 		m = extendGameWithArgs(m, os.Stderr, flag.Args())
 		go m.sound.Start(ctx)
-		p := tea.NewProgram(m, options...)
+		p := tea.NewProgram(m)
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
 			os.Exit(1)
@@ -55,10 +52,10 @@ func main() {
 		ssh.PasswordAuth(func(ssh.Context, string) bool { return false }),        // Do not accept password auth.
 		wish.WithMiddleware(
 			bubbletea.Middleware(func(sess ssh.Session) (tea.Model, []tea.ProgramOption) {
-				m := newGameSession(bubbletea.MakeRenderer(sess), o, world)
+				m := newGameSession(colorprofile.Detect(sess, sess.Environ()), o, world)
 				m = extendGameWithArgs(m, sess.Stderr(), sess.Command())
 				go m.sound.Start(sess.Context())
-				return m, append(options, tea.WithContext(sess.Context()))
+				return m, []tea.ProgramOption{tea.WithContext(sess.Context())}
 			}),
 			logging.Middleware(),
 		),

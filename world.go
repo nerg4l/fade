@@ -1,10 +1,11 @@
 package main
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
 	"image"
 	"image/draw"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 var frameDuration = 30 * time.Millisecond

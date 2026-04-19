@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	tea "github.com/charmbracelet/bubbletea"
 	"io"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 type soundServer struct {

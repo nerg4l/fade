@@ -4,12 +4,13 @@ import (
 	"crypto/rand"
 	"embed"
 	"encoding/base64"
-	"github.com/anthonynsimon/bild/transform"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"image"
 	"image/color"
 	"image/png"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/anthonynsimon/bild/transform"
 )
 
 //go:embed sprite/*
@@ -145,15 +146,15 @@ func (m spriteTrainer) View() image.Image {
 	return m.sprites[m.face][m.anim]
 }
 
-func colorize(c color.Color) lipgloss.TerminalColor {
+func colorize(c color.Color) (ansi, ansi256, truecolor color.Color) {
 	switch c {
 	case PalletWhite:
-		return lipgloss.CompleteColor{TrueColor: "#f8f8f8", ANSI256: "250", ANSI: "7"}
+		return lipgloss.Color("7"), lipgloss.Color("250"), lipgloss.Color("#f8f8f8")
 	case PalletBlack:
-		return lipgloss.CompleteColor{TrueColor: "#141414", ANSI256: "237", ANSI: "0"}
+		return lipgloss.Color("0"), lipgloss.Color("237"), lipgloss.Color("#141414")
 	case PalletHighlight:
-		return lipgloss.CompleteColor{TrueColor: "#cc0000", ANSI256: "124", ANSI: "1"}
+		return lipgloss.Color("1"), lipgloss.Color("124"), lipgloss.Color("#cc0000")
 	default:
-		return lipgloss.Color("3")
+		return lipgloss.Color("3"), lipgloss.Color("3"), lipgloss.Color("3")
 	}
 }

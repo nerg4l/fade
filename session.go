@@ -1,13 +1,15 @@
 package main
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"image"
 	"image/color"
 	"image/draw"
 	"io"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/colorprofile"
 )
 
 type GameSession struct {
@@ -15,7 +17,7 @@ type GameSession struct {
 	assets  gameAssets
 	sound   *soundServer
 
-	r *lipgloss.Renderer
+	p colorprofile.Profile
 
 	world      *image.NRGBA
 	pixelCache map[struct{ Top, Bottom color.Color }]string
@@ -28,7 +30,7 @@ type gameAssets struct {
 	Brick   image.Image
 }
 
-func newGameSession(r *lipgloss.Renderer, a gameAssets, world *image.NRGBA) GameSession {
+func newGameSession(p colorprofile.Profile, a gameAssets, world *image.NRGBA) GameSession {
 	trainer := newTrainer(a.Trainer)
 
 	ss := soundServer{w: io.Discard, c: make(chan soundMsg), lc: make(chan soundLoopMsg)}
@@ -43,7 +45,7 @@ func newGameSession(r *lipgloss.Renderer, a gameAssets, world *image.NRGBA) Game
 		},
 		assets: a,
 		sound:  &ss,
-		r:      r,
+		p:      p,
 
 		world:      world,
 		pixelCache: make(map[struct{ Top, Bottom color.Color }]string),
@@ -70,7 +72,6 @@ func (g GameSession) WithSound(w io.Writer) GameSession {
 
 func (g GameSession) Init() tea.Cmd {
 	return tea.Batch(
-		tea.HideCursor,
 		g.trainer.Model.Init(),
 	)
 }
@@ -143,10 +144,10 @@ func Sign(x int) int {
 	return 0
 }
 
-func (g GameSession) View() string {
+func (g GameSession) View() tea.View {
 	w, h := 5*16, 5*16
 	visibleArea := image.NewNRGBA(image.Rect(0, 0, w, h))
-	draw.Draw(visibleArea, visibleArea.Bounds(), &image.Uniform{PalletBlack}, image.ZP, draw.Src)
+	draw.Draw(visibleArea, visibleArea.Bounds(), &image.Uniform{PalletBlack}, image.Point{}, draw.Src)
 	{
 		src := g.world
 		r := image.Rectangle{Max: image.Point{X: w, Y: h}}
@@ -160,7 +161,11 @@ func (g GameSession) View() string {
 		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
 		draw.Draw(visibleArea, r, src, src.Bounds().Min, draw.Over)
 	}
-	return g.imageAsString(visibleArea)
+	var v tea.View
+	v.SetContent(g.imageAsString(visibleArea))
+	v.Cursor = nil
+	v.AltScreen = true
+	return v
 }
 
 func (g GameSession) imageAsString(img image.Image) string {
@@ -177,9 +182,10 @@ func (g GameSession) imageAsString(img image.Image) string {
 			k := struct{ Top, Bottom color.Color }{Top: top, Bottom: bottom}
 			s, ok := g.pixelCache[k]
 			if !ok {
-				s = g.r.NewStyle().
-					Foreground(colorize(top)).
-					Background(colorize(bottom)).
+				complete := lipgloss.Complete(g.p)
+				s = lipgloss.NewStyle().
+					Foreground(complete(colorize(top))).
+					Background(complete(colorize(bottom))).
 					Render("▀")
 				g.pixelCache[k] = s
 			}
