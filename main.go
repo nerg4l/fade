@@ -55,7 +55,7 @@ func main() {
 				m := newGameSession(colorprofile.Detect(sess, sess.Environ()), o, world)
 				m = extendGameWithArgs(m, sess.Stderr(), sess.Command())
 				go m.sound.Start(sess.Context())
-				return m, []tea.ProgramOption{tea.WithContext(sess.Context())}
+				return m, []tea.ProgramOption{tea.WithContext(sess.Context()), tea.WithFPS(25)}
 			}),
 			logging.Middleware(),
 		),
