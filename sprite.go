@@ -99,6 +99,7 @@ func generateId() string {
 var (
 	PalletWhite     = color.NRGBA{R: 0xf8, G: 0xf8, B: 0xf8, A: 0xff}
 	PalletBlack     = color.NRGBA{R: 0x14, G: 0x14, B: 0x14, A: 0xff}
+	PalletColor     = color.NRGBA{R: 0x60, G: 0x60, B: 0x60, A: 0xff}
 	PalletHighlight = color.NRGBA{R: 0xa8, G: 0xa8, B: 0xa8, A: 0xff}
 )
 
@@ -166,6 +167,8 @@ func colorize(c color.Color) (ansi, ansi256, truecolor color.Color) {
 		return lipgloss.Color("0"), lipgloss.Color("237"), lipgloss.Color("#141414")
 	case PalletHighlight:
 		return lipgloss.Color("1"), lipgloss.Color("124"), lipgloss.Color("#cc0000")
+	case PalletColor:
+		return lipgloss.Color("2"), lipgloss.Color("34"), lipgloss.Color("#00cc00")
 	default:
 		return lipgloss.Color("3"), lipgloss.Color("3"), lipgloss.Color("3")
 	}

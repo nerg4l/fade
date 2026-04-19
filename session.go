@@ -28,6 +28,7 @@ type gameAssets struct {
 	Blank   image.Image
 	Grass   image.Image
 	Brick   image.Image
+	Bush    image.Image
 }
 
 func newGameSession(p colorprofile.Profile, a gameAssets, world *image.NRGBA) GameSession {

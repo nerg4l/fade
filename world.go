@@ -40,8 +40,8 @@ var worldMap = func() *image.Gray {
 		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
 		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
 		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
-		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
-		'B', 'B', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', 'G', ' ', 'b', 'b', 'G', ' ', 'G', 'G', 'B', 'B',
+		'B', 'B', 'G', 'G', ' ', 'G', 'b', 'b', ' ', 'G', 'G', 'G', 'B', 'B',
 		'B', 'B', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'B', 'B',
 		'B', 'B', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', ' ', 'G', 'B', 'B',
 		'B', 'B', 'G', 'G', 'G', ' ', 'G', 'G', 'G', ' ', 'G', 'G', 'B', 'B',
@@ -60,6 +60,8 @@ func worldImage(o gameAssets, m *image.Gray) *image.NRGBA {
 			switch m.GrayAt(x, y).Y {
 			case 'B':
 				src = o.Brick
+			case 'b':
+				src = o.Bush
 			case 'G':
 				src = o.Grass
 			}

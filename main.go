@@ -120,6 +120,7 @@ func loadAssets() (gameAssets, error) {
 	a.Blank = tile.SubImage(image.Rect(0, 0, 8, 8))
 	a.Grass = tile.SubImage(image.Rect(8, 0, 16, 8))
 	a.Brick = tile.SubImage(image.Rect(0, 8, 8, 16))
+	a.Bush = tile.SubImage(image.Rect(8, 8, 16, 16))
 	trainer, err := openSpriteSheet("sprite/trainer.png")
 	if err != nil {
 		return a, err
