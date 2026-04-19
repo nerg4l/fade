@@ -179,13 +179,14 @@ func (g GameSession) imageAsString(img image.Image) string {
 	rec := img.Bounds()
 	complete := lipgloss.Complete(g.p)
 
-	for y := 0; y < rec.Dy(); y += 2 {
-		if y != 0 {
+	for y := rec.Min.Y; y < rec.Max.Y; y += 2 {
+		if y != rec.Min.Y {
 			b.WriteString("\n")
 		}
-		for x := 0; x < rec.Dx(); x++ {
-			top := img.At(rec.Min.X+x, rec.Min.Y+y)
-			bottom := img.At(rec.Min.X+x, rec.Min.Y+y+1)
+		for x := rec.Min.X; x < rec.Max.X; x++ {
+			top := img.At(x, y)
+			bottom := img.At(x, y+1)
+
 			k := Column{Top: top, Bottom: bottom}
 			s, ok := g.pixelCache[k]
 			if !ok {
