@@ -114,6 +114,18 @@ func (m spriteTrainer) Update(msg tea.Msg) (spriteTrainer, tea.Cmd) {
 			break
 		}
 		switch k := msg.String(); k {
+		case "w", "a", "s", "d":
+			switch k {
+			case "w":
+				k = "up"
+			case "a":
+				k = "left"
+			case "s":
+				k = "down"
+			case "d":
+				k = "right"
+			}
+			fallthrough
 		case "down", "up", "left", "right":
 			if m.face == k {
 				m.lock = true
