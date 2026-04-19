@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -20,6 +21,21 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
+type Options struct {
+	Profile colorprofile.Profile
+	Stderr  io.Writer
+	Assets  gameAssets
+	World   *image.NRGBA
+	Flags   []string
+}
+
+func NewProgram(ctx context.Context, o Options) (tea.Model, []tea.ProgramOption) {
+	m := newGameSession(o.Profile, o.Assets, o.World)
+	m = extendGameWithArgs(m, o.Stderr, o.Flags)
+	go m.sound.Start(ctx)
+	return m, []tea.ProgramOption{tea.WithContext(ctx), tea.WithFPS(25)}
+}
+
 func main() {
 	addr := flag.StringP("addr", "a", "0.0.0.0:5000", "SSH server port")
 	flag.Parse()
@@ -34,10 +50,15 @@ func main() {
 	if *addr == "-" {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		m := newGameSession(colorprofile.Detect(os.Stdout, os.Environ()), o, world)
-		m = extendGameWithArgs(m, os.Stderr, flag.Args())
-		go m.sound.Start(ctx)
-		p := tea.NewProgram(m, tea.WithFPS(25))
+		profile := colorprofile.Detect(os.Stdout, os.Environ())
+		m, opts := NewProgram(ctx, Options{
+			Stderr:  os.Stderr,
+			Flags:   flag.Args(),
+			Profile: profile,
+			Assets:  o,
+			World:   world,
+		})
+		p := tea.NewProgram(m, opts...)
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
 			os.Exit(1)
@@ -52,10 +73,13 @@ func main() {
 		ssh.PasswordAuth(func(ssh.Context, string) bool { return false }),        // Do not accept password auth.
 		wish.WithMiddleware(
 			bubbletea.Middleware(func(sess ssh.Session) (tea.Model, []tea.ProgramOption) {
-				m := newGameSession(colorprofile.ANSI, o, world)
-				m = extendGameWithArgs(m, sess.Stderr(), sess.Command())
-				go m.sound.Start(sess.Context())
-				return m, []tea.ProgramOption{tea.WithContext(sess.Context()), tea.WithFPS(25)}
+				return NewProgram(sess.Context(), Options{
+					Stderr:  sess.Stderr(),
+					Flags:   sess.Command(),
+					Profile: colorprofile.ANSI,
+					Assets:  o,
+					World:   world,
+				})
 			}),
 			logging.Middleware(),
 		),
