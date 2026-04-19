@@ -37,7 +37,7 @@ func main() {
 		m := newGameSession(colorprofile.Detect(os.Stdout, os.Environ()), o, world)
 		m = extendGameWithArgs(m, os.Stderr, flag.Args())
 		go m.sound.Start(ctx)
-		p := tea.NewProgram(m)
+		p := tea.NewProgram(m, tea.WithFPS(25))
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
 			os.Exit(1)
