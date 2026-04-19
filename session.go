@@ -20,7 +20,7 @@ type GameSession struct {
 	p colorprofile.Profile
 
 	world      *image.NRGBA
-	pixelCache map[struct{ Top, Bottom color.Color }]string
+	pixelCache map[Column]string
 }
 
 type gameAssets struct {
@@ -48,7 +48,7 @@ func newGameSession(p colorprofile.Profile, a gameAssets, world *image.NRGBA) Ga
 		p:      p,
 
 		world:      world,
-		pixelCache: make(map[struct{ Top, Bottom color.Color }]string),
+		pixelCache: make(map[Column]string),
 	}
 }
 
@@ -85,6 +85,12 @@ func (g GameSession) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return g, tea.Quit
 		}
+	case tea.ColorProfileMsg:
+		if g.p != msg.Profile {
+			g.pixelCache = make(map[Column]string)
+		}
+		g.p = msg.Profile
+		return g, nil
 	case moveMsg:
 		bounds := image.Rectangle{
 			image.Point{g.world.Rect.Min.X + (1 * 16) + 1, g.world.Rect.Min.Y + (1 * 16) + 1},
@@ -171,6 +177,7 @@ func (g GameSession) View() tea.View {
 func (g GameSession) imageAsString(img image.Image) string {
 	var b strings.Builder
 	rec := img.Bounds()
+	complete := lipgloss.Complete(g.p)
 
 	for y := 0; y < rec.Dy(); y += 2 {
 		if y != 0 {
@@ -179,10 +186,9 @@ func (g GameSession) imageAsString(img image.Image) string {
 		for x := 0; x < rec.Dx(); x++ {
 			top := img.At(rec.Min.X+x, rec.Min.Y+y)
 			bottom := img.At(rec.Min.X+x, rec.Min.Y+y+1)
-			k := struct{ Top, Bottom color.Color }{Top: top, Bottom: bottom}
+			k := Column{Top: top, Bottom: bottom}
 			s, ok := g.pixelCache[k]
 			if !ok {
-				complete := lipgloss.Complete(g.p)
 				s = lipgloss.NewStyle().
 					Foreground(complete(colorize(top))).
 					Background(complete(colorize(bottom))).
@@ -193,4 +199,8 @@ func (g GameSession) imageAsString(img image.Image) string {
 		}
 	}
 	return b.String()
+}
+
+type Column struct {
+	Top, Bottom color.Color
 }

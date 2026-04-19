@@ -52,7 +52,7 @@ func main() {
 		ssh.PasswordAuth(func(ssh.Context, string) bool { return false }),        // Do not accept password auth.
 		wish.WithMiddleware(
 			bubbletea.Middleware(func(sess ssh.Session) (tea.Model, []tea.ProgramOption) {
-				m := newGameSession(colorprofile.Detect(sess, sess.Environ()), o, world)
+				m := newGameSession(colorprofile.ANSI, o, world)
 				m = extendGameWithArgs(m, sess.Stderr(), sess.Command())
 				go m.sound.Start(sess.Context())
 				return m, []tea.ProgramOption{tea.WithContext(sess.Context()), tea.WithFPS(25)}
