@@ -1,4 +1,4 @@
-package main
+package fade
 
 import (
 	"image"
@@ -14,7 +14,7 @@ import (
 
 type GameSession struct {
 	trainer Sprite[spriteTrainer]
-	assets  gameAssets
+	assets  GameAssets
 	sound   *soundServer
 
 	p colorprofile.Profile
@@ -23,7 +23,7 @@ type GameSession struct {
 	pixelCache map[Column]string
 }
 
-type gameAssets struct {
+type GameAssets struct {
 	Trainer trainerAssets
 	Blank   image.Image
 	Grass   image.Image
@@ -31,7 +31,7 @@ type gameAssets struct {
 	Bush    image.Image
 }
 
-func newGameSession(p colorprofile.Profile, a gameAssets, world *image.NRGBA) GameSession {
+func newGameSession(p colorprofile.Profile, a GameAssets, world *image.NRGBA) GameSession {
 	trainer := newTrainer(a.Trainer)
 
 	ss := soundServer{w: io.Discard, c: make(chan soundMsg), lc: make(chan soundLoopMsg)}
@@ -164,7 +164,7 @@ func (g GameSession) View() tea.View {
 	}
 	{
 		src := g.trainer.Model.View()
-		dp := image.Point{w/2 - 8, h/2 - 8}
+		dp := image.Point{w/2 - 8, h/2 - 10}
 		r := image.Rectangle{dp, dp.Add(src.Bounds().Size())}
 		draw.Draw(viewPort, r, src, src.Bounds().Min, draw.Over)
 	}

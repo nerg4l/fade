@@ -1,4 +1,4 @@
-package main
+package fade
 
 import (
 	"crypto/rand"
@@ -7,10 +7,12 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/anthonynsimon/bild/transform"
+	"github.com/charmbracelet/colorprofile"
 )
 
 //go:embed sprite/*
@@ -172,4 +174,33 @@ func colorize(c color.Color) (ansi, ansi256, truecolor color.Color) {
 	default:
 		return lipgloss.Color("3"), lipgloss.Color("3"), lipgloss.Color("3")
 	}
+}
+
+func imageAsString(img image.Image, p colorprofile.Profile) string {
+	var b strings.Builder
+	rec := img.Bounds()
+	complete := lipgloss.Complete(p)
+	pixelCache := make(map[Column]string)
+
+	for y := rec.Min.Y; y < rec.Max.Y; y += 2 {
+		if y != rec.Min.Y {
+			b.WriteString("\n")
+		}
+		for x := rec.Min.X; x < rec.Max.X; x++ {
+			top := img.At(x, y)
+			bottom := img.At(x, y+1)
+
+			k := Column{Top: top, Bottom: bottom}
+			s, ok := pixelCache[k]
+			if !ok {
+				s = lipgloss.NewStyle().
+					Foreground(complete(colorize(top))).
+					Background(complete(colorize(bottom))).
+					Render("▀")
+				pixelCache[k] = s
+			}
+			b.WriteString(s)
+		}
+	}
+	return b.String()
 }
